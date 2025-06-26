@@ -49,5 +49,27 @@ class Pessoa {
         // Retorna o statement para ser utilizado posteriormente (ex: fetch dos dados)
         return $stmt;
     }
+
+    // Método para alterar a idade de uma pessoa pelo ID (POO: método da classe)
+    public function alterarIdade($novoIdade) {
+        // Monta a query SQL para atualizar a idade pelo id
+        $query = "UPDATE " . $this->nome_tabela . " SET idade = :idade WHERE id = :id";
+        // Prepara a query para execução
+        $stmt = $this->conexao->prepare($query);
+
+        // Limpa os dados recebidos para evitar XSS e SQL Injection
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $novoIdade = htmlspecialchars(strip_tags($novoIdade));
+
+        // Faz o bind dos parâmetros id e idade na query preparada
+        $stmt->bindParam(":id", $this->id);
+        $stmt->bindParam(":idade", $novoIdade);
+
+        // Executa a query e retorna true se for bem-sucedida, senão retorna false
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
 }
 ?>
