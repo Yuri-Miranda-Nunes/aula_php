@@ -411,42 +411,46 @@
         <section class="form-container">
             <?php
             // Inclui o arquivo de conexão com o banco de dados
-            include_once 'conexao.php';
+            include_once 'conexao.php'; // Inclui o script que define a classe de conexão com o banco de dados (POO).
+
             // Inclui a classe Pessoa
-            require_once 'pessoa.php';
+            require_once 'pessoa.php'; // Inclui a definição da classe Pessoa (POO), usada para manipular dados de pessoas.
 
             // Inicializa a variável de mensagem
-            $mensagem = '';
+            $mensagem = ''; // Variável para armazenar mensagens de feedback ao usuário.
+
             // Inicializa a variável de controle de sucesso do cadastro
-            $cadastroSucesso = false;
+            $cadastroSucesso = false; // Variável booleana para indicar se o cadastro foi realizado com sucesso.
 
             // Cria uma instância do banco de dados
-            $database = new BancoDeDados();
+            $database = new BancoDeDados(); // (POO) Cria um objeto da classe BancoDeDados, responsável pela conexão com o banco.
+
             // Obtém a conexão com o banco de dados
-            $db = $database->obterConexao();
+            $db = $database->obterConexao(); // (POO) Chama o método obterConexao() para pegar o objeto de conexão PDO.
 
             // Verifica se a conexão foi bem-sucedida
-            if ($db === null) {
+            if ($db === null) { // Se a conexão falhar, $db será null.
                 echo "<div class='error-message'>";
                 echo "<i class='fas fa-exclamation-triangle'></i>";
                 echo "Erro: Não foi possível conectar ao banco de dados.";
                 echo "</div>";
             } else {
                 // Verifica se o formulário foi enviado via POST
-                if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+                if ($_SERVER['REQUEST_METHOD'] == 'POST') { // Checa se o formulário foi enviado (requisição POST).
                     // Cria uma nova pessoa
-                    $pessoa = new Pessoa($db);
+                    $pessoa = new Pessoa($db); // (POO) Cria um objeto Pessoa, passando a conexão PDO para o construtor.
+
                     // Atribui os valores do formulário
-                    $pessoa->nome = $_POST['nome'];
-                    $pessoa->idade = $_POST['idade'];
+                    $pessoa->nome = $_POST['nome']; // (POO) Define o atributo 'nome' do objeto Pessoa com o valor enviado pelo formulário.
+                    $pessoa->idade = $_POST['idade']; // (POO) Define o atributo 'idade' do objeto Pessoa.
 
                     // Tenta cadastrar a pessoa
-                    if ($pessoa->criar()) {
+                    if ($pessoa->criar()) { // (POO) Chama o método criar() do objeto Pessoa para inserir no banco.
                         echo "<div class='success-message'>";
                         echo "<i class='fas fa-check-circle'></i>";
                         echo "Pessoa '{$pessoa->nome}' cadastrada com sucesso!";
                         echo "</div>";
-                        $cadastroSucesso = true;
+                        $cadastroSucesso = true; // Marca que o cadastro foi bem-sucedido.
                     } else {
                         echo "<div class='error-message'>";
                         echo "<i class='fas fa-exclamation-triangle'></i>";
