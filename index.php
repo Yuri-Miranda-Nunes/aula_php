@@ -393,7 +393,7 @@
             </a>
             <ul class="nav-menu" id="navMenu">
                 <li><a href="listar.php" class="nav-link"><i class="fas fa-list"></i> Lista</a></li>
-                <li><a href="#" class="nav-link active"><i class="fas fa-user-plus"></i> Cadastrar</a></li>
+                <li><a href="index.php" class="nav-link active"><i class="fas fa-user-plus"></i> Cadastrar</a></li>
             </ul>
             <button class="mobile-menu-toggle" id="mobileMenuToggle">
                 <i class="fas fa-bars"></i>
