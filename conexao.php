@@ -15,7 +15,7 @@ class BancoDeDados
         $this->conexao = null;
         try {
             // Criação de um novo objeto PDO para conexão (POO: uso de outro objeto dentro da classe)
-            $this->conexao = new PDO("mysql:host={$this->host};dbname={$this->nome_banco}", $this->usuario, $this->senha);
+            $this->conexao = new PDO("mysql:host={$this->host};port=49170;dbname={$this->nome_banco}", $this->usuario, $this->senha);
             $this->conexao->exec("set names utf8");
             $this->conexao->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $excecao) {

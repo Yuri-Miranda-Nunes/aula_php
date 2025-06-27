@@ -465,7 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alterar_id']) && isse
             </a>
             <ul class="nav-menu" id="navMenu">
                 <li><a href="#" class="nav-link"><i class="fas fa-list"></i> Lista</a></li>
-                <li><a href="cadastro.php" class="nav-link"><i class="fas fa-user-plus"></i> Cadastrar</a></li>
+                <li><a href="integracao.php" class="nav-link"><i class="fas fa-user-plus"></i> Cadastrar</a></li>
             </ul>
             <button class="mobile-menu-toggle" id="mobileMenuToggle">
                 <i class="fas fa-bars"></i>
@@ -493,7 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alterar_id']) && isse
                     echo "<div class='person-id'>ID: " . htmlspecialchars($linha['id']) . "</div>";
                     echo "<div class='person-name'>" . htmlspecialchars($linha['nome']) . "</div>";
                     echo "<div class='person-age'>";
-                    echo "<i class='fas fa-birthday-cake'></i>";
+                    echo "<i class=''></i>";
                     echo "<span id='idade-{$linha['id']}'>" . htmlspecialchars($linha['idade']) . " anos</span>";
                     echo "</div>";
                     echo "</div>";
