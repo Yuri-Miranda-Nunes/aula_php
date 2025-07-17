@@ -1,613 +1,444 @@
 <?php
+// Incluir as classes necessárias
+require_once 'classes/Produto.php';
 require_once 'conexao.php';
 require_once 'pessoa.php';
 
+// Variáveis para mensagens e dados
+$mensagem = "";
+$erro = "";
+
+// Determinar a aba ativa
+$abaAtiva = isset($_GET['aba']) ? $_GET['aba'] : 'produtos';
+
+// Instanciar classes
+$produto = new Produto();
+
+// Conectar ao banco para pessoas
 $database = new BancoDeDados();
 $db = $database->obterConexao();
 
 if ($db === null) {
-    die("<div class='error-message'>Erro: Não foi possível conectar ao banco de dados.</div>");
+    $erro = "Erro: Não foi possível conectar ao banco de dados.";
 }
 
-// Tratamento do formulário do off-canvas para editar nome e idade
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_id']) && isset($_POST['editar_nome']) && isset($_POST['editar_idade'])) {
-    $pessoa = new Pessoa($db);
-    $pessoa->id = $_POST['editar_id'];
-    $pessoa->nome = $_POST['editar_nome'];
-    $pessoa->idade = $_POST['editar_idade'];
-    // Atualiza nome e idade
-    $query = "UPDATE pessoas SET nome = :nome, idade = :idade WHERE id = :id";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':nome', $pessoa->nome);
-    $stmt->bindParam(':idade', $pessoa->idade);
-    $stmt->bindParam(':id', $pessoa->id);
-    if ($stmt->execute()) {
-        echo "";
-    } else {
-        echo "<div class='error-message'>Erro ao atualizar a pessoa.</div>";
+// Processar formulário quando enviado
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['acao'])) {
+        
+        // OPERAÇÕES COM PRODUTOS
+        if ($_POST['acao'] === 'inserir_produto') {
+            $produto->setNome($_POST['nome']);
+            $produto->setPreco($_POST['preco']);
+            $produto->setQuantidade($_POST['quantidade']);
+            
+            $erros = $produto->validar();
+            
+            if (empty($erros)) {
+                if ($produto->inserir()) {
+                    $mensagem = "Produto inserido com sucesso!";
+                } else {
+                    $erro = "Erro ao inserir produto!";
+                }
+            } else {
+                $erro = implode(", ", $erros);
+            }
+        }
+        
+        elseif ($_POST['acao'] === 'atualizar_produto') {
+            $produto->setId($_POST['id']);
+            $produto->setNome($_POST['nome']);
+            $produto->setPreco($_POST['preco']);
+            $produto->setQuantidade($_POST['quantidade']);
+            
+            $erros = $produto->validar();
+            
+            if (empty($erros)) {
+                if ($produto->atualizar()) {
+                    $mensagem = "Produto atualizado com sucesso!";
+                } else {
+                    $erro = "Erro ao atualizar produto!";
+                }
+            } else {
+                $erro = implode(", ", $erros);
+            }
+        }
+        
+        elseif ($_POST['acao'] === 'deletar_produto') {
+            if ($produto->deletar($_POST['id'])) {
+                $mensagem = "Produto deletado com sucesso!";
+            } else {
+                $erro = "Erro ao deletar produto!";
+            }
+        }
+    }
+    
+    // OPERAÇÕES COM PESSOAS
+    elseif (isset($_POST['alterar_id']) && isset($_POST['nova_idade'])) {
+        $pessoa = new Pessoa($db);
+        $pessoa->id = $_POST['alterar_id'];
+        $novaIdade = $_POST['nova_idade'];
+        
+        if ($pessoa->alterarIdade($novaIdade)) {
+            $mensagem = "Idade alterada com sucesso para o ID {$_POST['alterar_id']}!";
+        } else {
+            $erro = "Erro ao alterar a idade.";
+        }
     }
 }
 
-// Se o formulário de alteração de idade antigo for enviado (opcional, pode remover se quiser só off-canvas)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alterar_id']) && isset($_POST['nova_idade'])) {
-    $pessoa = new Pessoa($db);
-    $pessoa->id = $_POST['alterar_id'];
-    $novaIdade = $_POST['nova_idade'];
-    if ($pessoa->alterarIdade($novaIdade)) {
-        echo "<div class='success-message'>Idade alterada com sucesso para o ID {$_POST['alterar_id']}!</div>";
-    } else {
-        echo "<div class='error-message'>Erro ao alterar a idade.</div>";
+// Buscar produto específico para edição
+$produtoEdicao = null;
+if (isset($_GET['editar']) && $abaAtiva === 'produtos') {
+    $produtoTemp = new Produto();
+    if ($produtoTemp->buscarPorId($_GET['editar'])) {
+        $produtoEdicao = $produtoTemp;
     }
+}
+
+// Contar totais
+$totalProdutos = $produto->contarTotal();
+$totalPessoas = 0;
+if ($db !== null) {
+    $pessoa = new Pessoa($db);
+    $stmt = $pessoa->ler();
+    $totalPessoas = $stmt->rowCount();
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Pessoas - Sistema de Cadastro</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Sistema Unificado - Cadastros</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            line-height: 1.6;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
-
-        /* Navbar Styles */
-        .navbar {
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            padding: 1rem 0;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1001;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-container {
+        
+        .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
-        .nav-brand {
-            font-size: 1.5rem;
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-bottom: 2px solid white;
             font-weight: bold;
-            color: #00d4ff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
         }
-
-        .nav-menu {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: #ffffff;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .nav-link:hover {
-            background: rgba(0, 212, 255, 0.1);
-            color: #00d4ff;
-            transform: translateY(-2px);
-        }
-
-        .mobile-menu-toggle {
+        
+        .tab-content {
             display: none;
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 1.5rem;
-            cursor: pointer;
         }
-
-        /* Main Content */
-        .main-content {
-            margin-top: 100px;
-            padding: 2rem;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .page-header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .page-title {
-            font-size: 3rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-        }
-
-        .page-subtitle {
-            font-size: 1.2rem;
-            color: #cccccc;
-            opacity: 0.8;
-        }
-
-        /* Cards Grid */
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
-        }
-
-        .person-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 2rem;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .person-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #00d4ff, #0099cc);
-        }
-
-        .person-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0, 212, 255, 0.2);
-            border-color: rgba(0, 212, 255, 0.3);
-        }
-
-        .person-info {
-            margin-bottom: 1.5rem;
-        }
-
-        .person-id {
-            font-size: 0.9rem;
-            color: #00d4ff;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .person-name {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #ffffff;
-        }
-
-        .person-age {
-            font-size: 1.1rem;
-            color: #cccccc;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .edit-btn {
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            width: 100%;
-            justify-content: center;
-        }
-
-        .edit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.3);
-        }
-
-        /* Off-canvas Styles */
-        .offcanvas-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(4px);
-            z-index: 1002;
-        }
-
-        .offcanvas {
-            display: none;
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 400px;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-            padding: 2rem;
-            z-index: 1003;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        }
-
-        .offcanvas.active {
-            transform: translateX(0);
-        }
-
-        .offcanvas-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .offcanvas-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #00d4ff;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .close-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: rotate(90deg);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
+        
+        .tab-content.active {
             display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #cccccc;
         }
-
-        .form-input {
+        
+        .mensagem {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .sucesso {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .erro {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        table {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+            border-collapse: collapse;
+            margin-bottom: 20px;
         }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #00d4ff;
-            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        
+        table td {
+            padding: 10px;
+            border: 1px solid #ddd;
         }
-
-        .save-btn {
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
+        
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        input[type="submit"], button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        input[type="submit"]:hover, button:hover {
+            background-color: #0056b3;
+        }
+        
+        .person {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .alterar-form {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .alterar-form input[type="number"] {
+            width: 120px;
+        }
+        
+        .stats {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .stats h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .stats ul {
+            margin: 10px 0;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-buttons a {
+            padding: 8px 16px;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        
+        .nav-buttons a:hover {
+            background-color: #5a6268;
+        }
+        
+        .delete-btn {
+            background-color: #dc3545;
             color: white;
             border: none;
-            padding: 1rem 2rem;
-            border-radius: 8px;
+            padding: 5px 10px;
+            border-radius: 3px;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 1rem;
-            width: 100%;
-            transition: all 0.3s ease;
+            font-size: 12px;
         }
-
-        .save-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.3);
-        }
-
-        /* Messages */
-        .success-message, .error-message {
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            margin: 1rem 2rem;
-            font-weight: 600;
-            position: fixed;
-            top: 100px;
-            right: 2rem;
-            z-index: 1004;
-            animation: slideIn 0.3s ease;
-        }
-
-        .success-message {
-            background: rgba(0, 255, 136, 0.1);
-            color: #00ff88;
-            border: 1px solid rgba(0, 255, 136, 0.3);
-        }
-
-        .error-message {
-            background: rgba(255, 0, 68, 0.1);
-            color: #ff0044;
-            border: 1px solid rgba(255, 0, 68, 0.3);
-        }
-
-        .no-records {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: #cccccc;
-            font-size: 1.2rem;
-        }
-
-        /* Animations */
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .nav-menu {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: rgba(0, 0, 0, 0.95);
-                flex-direction: column;
-                padding: 1rem;
-                gap: 1rem;
-            }
-
-            .nav-menu.active {
-                display: flex;
-            }
-
-            .mobile-menu-toggle {
-                display: block;
-            }
-
-            .main-content {
-                padding: 1rem;
-                margin-top: 80px;
-            }
-
-            .page-title {
-                font-size: 2rem;
-            }
-
-            .cards-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .offcanvas {
-                width: 100%;
-                max-width: 400px;
-            }
-
-            .success-message, .error-message {
-                right: 1rem;
-                left: 1rem;
-                margin: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .nav-container {
-                padding: 0 1rem;
-            }
-
-            .person-card {
-                padding: 1.5rem;
-            }
-
-            .offcanvas {
-                padding: 1rem;
-            }
+        
+        .delete-btn:hover {
+            background-color: #c82333;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="#" class="nav-brand">
-                <i class="fas fa-users"></i>
-                Sistema de Cadastro
+    <div class="container">
+        <h1>Sistema Unificado de Cadastros</h1>
+        
+        <!-- Abas -->
+        <div class="tabs">
+            <a href="?aba=produtos" class="tab <?php echo $abaAtiva === 'produtos' ? 'active' : ''; ?>">
+                Produtos (<?php echo $totalProdutos; ?>)
             </a>
-            <ul class="nav-menu" id="navMenu">
-                <li><a href="listar.php" class="nav-link"><i class="fas fa-list"></i> Lista</a></li>
-                <li><a href="index.php" class="nav-link"><i class="fas fa-user-plus"></i> Cadastrar</a></li>
-            </ul>
-            <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <header class="page-header">
-            <h1 class="page-title">Lista de Pessoas</h1>
-            <p class="page-subtitle">Gerencie todos os cadastros do sistema</p>
-        </header>
-
-        <section class="cards-grid">
-            <?php
-            $pessoa = new Pessoa($db);
-            $stmt = $pessoa->ler();
-            $num_linhas = $stmt->rowCount();
-
-            if ($num_linhas > 0) {
-                while ($linha = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    echo "<div class='person-card'>";
-                    echo "<div class='person-info'>";
-                    echo "<div class='person-id'>ID: " . htmlspecialchars($linha['id']) . "</div>";
-                    echo "<div class='person-name'>" . htmlspecialchars($linha['nome']) . "</div>";
-                    echo "<div class='person-age'>";
-                    echo "<i class=''></i>";
-                    echo "<span id='idade-{$linha['id']}'>" . htmlspecialchars($linha['idade']) . " anos</span>";
-                    echo "</div>";
-                    echo "</div>";
-                    echo "<button type='button' class='edit-btn' onclick=\"abrirOffcanvas('{$linha['id']}', '" . htmlspecialchars($linha['nome']) . "', '{$linha['idade']}')\">";
-                    echo "<i class='fas fa-edit'></i> Editar";
-                    echo "</button>";
-                    echo "</div>";
-                }
-            } else {
-                echo "<div class='no-records'>";
-                echo "<i class='fas fa-users' style='font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;'></i>";
-                echo "<p>Nenhum registro encontrado.</p>";
-                echo "<p>Que tal adicionar a primeira pessoa?</p>";
-                echo "</div>";
-            }
-            ?>
-        </section>
-    </main>
-
-    <!-- Offcanvas Overlay -->
-    <div class="offcanvas-overlay" id="offcanvasOverlay" onclick="fecharOffcanvas()"></div>
-
-    <!-- Offcanvas para edição -->
-    <div class="offcanvas" id="offcanvas">
-        <div class="offcanvas-header">
-            <h2 class="offcanvas-title">
-                <i class="fas fa-user-edit"></i>
-                Editar Pessoa
-            </h2>
-            <button class="close-btn" onclick="fecharOffcanvas()">
-                <i class="fas fa-times"></i>
-            </button>
+            <a href="?aba=pessoas" class="tab <?php echo $abaAtiva === 'pessoas' ? 'active' : ''; ?>">
+                Pessoas (<?php echo $totalPessoas; ?>)
+            </a>
         </div>
         
-        <form id="formEditar" method="post" action="">
-            <input type="hidden" name="editar_id" id="editar_id">
-            
-            <div class="form-group">
-                <label class="form-label" for="editar_nome">
-                    <i class="fas fa-user"></i> Nome
-                </label>
-                <input type="text" name="editar_nome" id="editar_nome" class="form-input" required>
+        <!-- Mensagens -->
+        <?php if (!empty($mensagem)): ?>
+            <div class="mensagem sucesso">
+                <strong>Sucesso:</strong> <?php echo $mensagem; ?>
             </div>
-            
-            <div class="form-group">
-                <label class="form-label" for="editar_idade">
-                    <i class="fas fa-birthday-cake"></i> Idade
-                </label>
-                <input type="number" name="editar_idade" id="editar_idade" class="form-input" min="0" max="150" required>
+        <?php endif; ?>
+        
+        <?php if (!empty($erro)): ?>
+            <div class="mensagem erro">
+                <strong>Erro:</strong> <?php echo $erro; ?>
             </div>
+        <?php endif; ?>
+        
+        <!-- Conteúdo da Aba Produtos -->
+        <div class="tab-content <?php echo $abaAtiva === 'produtos' ? 'active' : ''; ?>">
+            <h2><?php echo $produtoEdicao ? 'Editar Produto' : 'Cadastrar Novo Produto'; ?></h2>
             
-            <button type="submit" class="save-btn">
-                <i class="fas fa-save"></i>
-                Salvar Alterações
-            </button>
-        </form>
-    </div>
-
-    <script>
-        // Mobile menu toggle
-        document.getElementById('mobileMenuToggle').addEventListener('click', function() {
-            const navMenu = document.getElementById('navMenu');
-            navMenu.classList.toggle('active');
-        });
-
-        // Offcanvas functions
-        function abrirOffcanvas(id, nome, idade) {
-            document.getElementById('editar_id').value = id;
-            document.getElementById('editar_nome').value = nome;
-            document.getElementById('editar_idade').value = idade;
+            <form method="POST" action="?aba=produtos">
+                <input type="hidden" name="acao" value="<?php echo $produtoEdicao ? 'atualizar_produto' : 'inserir_produto'; ?>">
+                
+                <?php if ($produtoEdicao): ?>
+                    <input type="hidden" name="id" value="<?php echo $produtoEdicao->getId(); ?>">
+                <?php endif; ?>
+                
+                <table>
+                    <tr>
+                        <td><label for="nome">Nome do Produto:</label></td>
+                        <td>
+                            <input type="text" id="nome" name="nome" 
+                                   value="<?php echo $produtoEdicao ? $produtoEdicao->getNome() : ''; ?>" 
+                                   required>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="preco">Preço:</label></td>
+                        <td>
+                            <input type="number" id="preco" name="preco" 
+                                   value="<?php echo $produtoEdicao ? $produtoEdicao->getPreco() : ''; ?>" 
+                                   step="0.01" min="0.01" required>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="quantidade">Quantidade:</label></td>
+                        <td>
+                            <input type="number" id="quantidade" name="quantidade" 
+                                   value="<?php echo $produtoEdicao ? $produtoEdicao->getQuantidade() : ''; ?>" 
+                                   min="0" required>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <input type="submit" value="<?php echo $produtoEdicao ? 'Atualizar Produto' : 'Cadastrar Produto'; ?>">
+                            <?php if ($produtoEdicao): ?>
+                                <a href="?aba=produtos" style="color: #6c757d;">Cancelar Edição</a>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+            </form>
             
-            const overlay = document.getElementById('offcanvasOverlay');
-            const offcanvas = document.getElementById('offcanvas');
+            <hr>
             
-            overlay.style.display = 'block';
-            offcanvas.style.display = 'block';
+            <!-- Lista de Produtos -->
+            <h3>Produtos Cadastrados</h3>
+            <?php
+            $produtosList = new Produto();
+            $produtos = $produtosList->listarTodos();
             
-            // Trigger animation
-            setTimeout(() => {
-                offcanvas.classList.add('active');
-            }, 10);
-        }
-
-        function fecharOffcanvas() {
-            const overlay = document.getElementById('offcanvasOverlay');
-            const offcanvas = document.getElementById('offcanvas');
-            
-            offcanvas.classList.remove('active');
-            
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                offcanvas.style.display = 'none';
-            }, 300);
-        }
-
-        // Auto-hide messages after 5 seconds
-        document.addEventListener('DOMContentLoaded', function() {
-            const messages = document.querySelectorAll('.success-message, .error-message');
-            messages.forEach(message => {
-                setTimeout(() => {
-                    message.style.opacity = '0';
-                    setTimeout(() => {
-                        message.remove();
-                    }, 300);
-                }, 5000);
-            });
-        });
-
-        // Close offcanvas on Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                fecharOffcanvas();
+            if ($produtos && count($produtos) > 0) {
+                echo "<table>";
+                echo "<tr><th>ID</th><th>Nome</th><th>Preço</th><th>Quantidade</th><th>Ações</th></tr>";
+                
+                foreach ($produtos as $prod) {
+                    echo "<tr>";
+                    echo "<td>" . $prod['id'] . "</td>";
+                    echo "<td>" . $prod['nome'] . "</td>";
+                    echo "<td>R$ " . number_format($prod['preco'], 2, ',', '.') . "</td>";
+                    echo "<td>" . $prod['quantidade'] . "</td>";
+                    echo "<td>";
+                    echo "<a href='?aba=produtos&editar=" . $prod['id'] . "' style='margin-right: 10px;'>Editar</a>";
+                    echo "<form method='POST' action='?aba=produtos' style='display: inline;'>";
+                    echo "<input type='hidden' name='acao' value='deletar_produto'>";
+                    echo "<input type='hidden' name='id' value='" . $prod['id'] . "'>";
+                    echo "<button type='submit' class='delete-btn' onclick='return confirm(\"Tem certeza que deseja deletar este produto?\")'>Deletar</button>";
+                    echo "</form>";
+                    echo "</td>";
+                    echo "</tr>";
+                }
+                echo "</table>";
+            } else {
+                echo "<p>Nenhum produto cadastrado.</p>";
             }
-        });
-    </script>
+            ?>
+        </div>
+        
+        <!-- Conteúdo da Aba Pessoas -->
+        <div class="tab-content <?php echo $abaAtiva === 'pessoas' ? 'active' : ''; ?>">
+            <h2>Lista de Pessoas Cadastradas</h2>
+            
+            <?php if ($db !== null): ?>
+                <?php
+                $pessoa = new Pessoa($db);
+                $stmt = $pessoa->ler();
+                $num_linhas = $stmt->rowCount();
+                
+                if ($num_linhas > 0) {
+                    while ($linha = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        echo "<div class='person'>";
+                        echo "<p><strong>ID:</strong> " . $linha['id'] . "</p>";
+                        echo "<p><strong>Nome:</strong> " . $linha['nome'] . "</p>";
+                        echo "<p><strong>Idade:</strong> " . $linha['idade'] . " anos</p>";
+                        
+                        // Formulário para alterar idade
+                        echo "<form class='alterar-form' method='post' action='?aba=pessoas'>";
+                        echo "<input type='hidden' name='alterar_id' value='" . $linha['id'] . "'>";
+                        echo "<input type='number' name='nova_idade' min='0' placeholder='Nova idade' required>";
+                        echo "<button type='submit'>Alterar Idade</button>";
+                        echo "</form>";
+                        echo "</div>";
+                    }
+                } else {
+                    echo "<p class='erro'>Nenhuma pessoa encontrada.</p>";
+                }
+                ?>
+            <?php else: ?>
+                <p class="erro">Erro de conexão com o banco de dados.</p>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Estatísticas do Sistema -->
+        <div class="stats">
+            <h3>Estatísticas do Sistema</h3>
+            <ul>
+                <li>Total de produtos cadastrados: <?php echo $totalProdutos; ?></li>
+                <li>Total de pessoas cadastradas: <?php echo $totalPessoas; ?></li>
+                <li>Sistema desenvolvido usando POO (Programação Orientada a Objetos)</li>
+                <li>Operações disponíveis: Inserir, Atualizar, Deletar e Listar</li>
+            </ul>
+        </div>
+    </div>
 </body>
 </html>
