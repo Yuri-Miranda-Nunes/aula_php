@@ -98,6 +98,13 @@ class Produto
         }
     }
 
+    public function listarTodos() {
+        $sql = "SELECT * FROM produtos";
+        $stmt = $this->conexao->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // Método para buscar um produto por ID (POO: método da classe)
     public function buscarPorId($id)
     {
