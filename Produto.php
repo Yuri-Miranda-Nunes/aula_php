@@ -5,19 +5,16 @@ require_once 'conexao.php';
 // Definição da classe Produto (POO: definição de classe)
 class Produto
 {
-    // Propriedades privadas da classe (POO: encapsulamento)
     private $id;
     private $nome;
     private $preco;
     private $quantidade;
     private $conexao;
 
-    // Método construtor (POO: construtor da classe)
-    public function __construct()
+    // Construtor agora recebe a conexão como parâmetro
+    public function __construct($conexao)
     {
-        // Instancia a classe BancoDeDados e obtém a conexão (POO: composição)
-        $bancoDeDados = new BancoDeDados();
-        $this->conexao = $bancoDeDados->obterConexao();
+        $this->conexao = $conexao;
     }
 
     // Métodos getter e setter (POO: encapsulamento com métodos de acesso)
@@ -228,7 +225,7 @@ class Produto
 // Exemplo de uso da classe Produto
 /*
 // Criar uma instância da classe Produto
-$produto = new Produto();
+$produto = new Produto($conexao);
 
 // Inserir um novo produto
 $produto->setNome("Notebook");
@@ -248,7 +245,7 @@ foreach ($produtos as $item) {
 }
 
 // Buscar produto por ID
-$produto = new Produto();
+$produto = new Produto($conexao);
 if ($produto->buscarPorId(1)) {
     echo "Produto encontrado: " . $produto->getNome();
 } else {

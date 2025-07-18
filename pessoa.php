@@ -71,5 +71,13 @@ class Pessoa {
         }
         return false;
     }
+
+    // Método para deletar um registro da tabela 'pessoas' pelo ID
+    public function deletar($id) {
+        $query = "DELETE FROM " . $this->nome_tabela . " WHERE id = :id";
+        $stmt = $this->conexao->prepare($query);
+        $stmt->bindParam(':id', $id);
+        return $stmt->execute();
+    }
 }
 ?>
