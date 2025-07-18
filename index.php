@@ -130,7 +130,6 @@ if ($conexao !== null) {
             padding: 0;
             box-sizing: border-box;
         }
-
         :root {
             --primary-color: #667eea;
             --secondary-color: #764ba2;

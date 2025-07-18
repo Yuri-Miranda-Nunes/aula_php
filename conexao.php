@@ -9,7 +9,6 @@ class BancoDeDados
     private $senha = "";
     // Propriedade pública para armazenar a conexão (POO: atributo da classe)
     public $conexao;
-
     // Método público para obter a conexão com o banco de dados (POO: método da classe)
     public function obterConexao() {
         $this->conexao = null;

@@ -1,6 +1,5 @@
 <?php
 require_once 'conexao.php';
-
 $banco = new BancoDeDados();
 $conexao = $banco->obterConexao();
 

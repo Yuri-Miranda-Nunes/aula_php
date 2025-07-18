@@ -1,7 +1,6 @@
 <?php
 // Incluir o arquivo de conexão
 require_once 'conexao.php';
-
 // Definição da classe Produto (POO: definição de classe)
 class Produto
 {
