@@ -9,12 +9,13 @@ class BancoDeDados
     private $senha = "";
     // Propriedade pública para armazenar a conexão (POO: atributo da classe)
     public $conexao;
+
     // Método público para obter a conexão com o banco de dados (POO: método da classe)
     public function obterConexao() {
         $this->conexao = null;
         try {
             // Criação de um novo objeto PDO para conexão (POO: uso de outro objeto dentro da classe)
-            $this->conexao = new PDO("mysql:host={$this->host};dbname={$this->nome_banco}", $this->usuario, $this->senha);
+            $this->conexao = new PDO("mysql:host={$this->host};port=49170;dbname={$this->nome_banco}", $this->usuario, $this->senha);
             $this->conexao->exec("set names utf8");
             $this->conexao->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $excecao) {
