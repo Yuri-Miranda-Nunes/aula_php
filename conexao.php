@@ -3,10 +3,10 @@
 class BancoDeDados
 {
     // Propriedades privadas para armazenar dados de conexão (POO: encapsulamento)
-    private $host = "localhost";
+    private $host = "sql109.infinityfree.com";
     private $nome_banco = "aula_php";
-    private $usuario = "root";
-    private $senha = "";
+    private $usuario = "if0_39503376";
+    private $senha = "SXFZycAQo0U";
     // Propriedade pública para armazenar a conexão (POO: atributo da classe)
     public $conexao;
 
@@ -15,7 +15,7 @@ class BancoDeDados
         $this->conexao = null;
         try {
             // Criação de um novo objeto PDO para conexão (POO: uso de outro objeto dentro da classe)
-            $this->conexao = new PDO("mysql:host={$this->host};port=49170;dbname={$this->nome_banco}", $this->usuario, $this->senha);
+            $this->conexao = new PDO("mysql:host={$this->host};dbname={$this->nome_banco}", $this->usuario, $this->senha);
             $this->conexao->exec("set names utf8");
             $this->conexao->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $excecao) {
