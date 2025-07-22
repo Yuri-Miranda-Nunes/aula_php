@@ -4,7 +4,7 @@ class BancoDeDados
 {
     // Propriedades privadas para armazenar dados de conexão (POO: encapsulamento)
     private $host = "sql109.infinityfree.com";
-    private $nome_banco = "aula_php";
+    private $nome_banco = "if0_39503376_aula_php";
     private $usuario = "if0_39503376";
     private $senha = "SXFZycAQo0U";
     // Propriedade pública para armazenar a conexão (POO: atributo da classe)
